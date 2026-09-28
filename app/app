@@ -1,0 +1,141 @@
+# app.py
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from banco import conectar, consultar
+
+st.set_page_config(page_title="Portal da Transparência", layout="wide")
+st.title("📊 Portal da Transparência - Viagens a Serviço")
+
+# Função utilitária
+def run_query(conexao, query, params=None):
+    resultados = consultar(conexao, query, params)
+    colunas = [desc[0] for desc in conexao.cursor().description]
+    return pd.DataFrame(resultados, columns=colunas)
+
+conexao = conectar()
+
+# --- Filtros interativos ---
+st.sidebar.header("Filtros")
+orgao = st.sidebar.text_input("Órgão Superior (nome parcial)")
+uf = st.sidebar.text_input("UF de destino")
+data_inicio = st.sidebar.date_input("Data inicial")
+data_fim = st.sidebar.date_input("Data final")
+
+condicoes = []
+params = []
+
+if orgao:
+    condicoes.append("nome_orgao_superior ILIKE %s")
+    params.append(f"%{orgao}%")
+if uf:
+    condicoes.append("destino_uf = %s")
+    params.append(uf)
+if data_inicio and data_fim:
+    condicoes.append("data_inicio BETWEEN %s AND %s")
+    params.extend([data_inicio, data_fim])
+
+where_clause = "WHERE " + " AND ".join(condicoes) if condicoes else ""
+
+# --- Dados filtrados ---
+query_base = f"""
+    SELECT nome_orgao_superior, destinos, valor_total, duracao_dias, data_inicio, data_fim, destino_uf
+    FROM silver_passagem
+    {where_clause};
+"""
+df = run_query(conexao, query_base, params)
+
+st.subheader("📌 Dados filtrados")
+st.dataframe(df)
+
+if not df.empty:
+    fig1 = px.bar(df.groupby("nome_orgao_superior")["valor_total"].sum().reset_index(),
+                  x="nome_orgao_superior", y="valor_total",
+                  title="Custo total por órgão (filtrado)")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    fig2 = px.bar(df.groupby("destinos")["valor_total"].mean().reset_index(),
+                  x="destinos", y="valor_total",
+                  title="Custo médio por destino (filtrado)")
+    st.plotly_chart(fig2, use_container_width=True)
+
+    fig3 = px.pie(df, names="destino_uf", title="Distribuição por UF (filtrado)")
+    st.plotly_chart(fig3, use_container_width=True)
+else:
+    st.warning("Nenhum dado encontrado para os filtros selecionados.")
+
+# --- Gráficos fixos (7 perguntas originais) ---
+st.header("📊 Métricas Fixas (Camada GOLD)")
+
+df_orgao = run_query(conexao, """
+    SELECT nome_orgao_superior, SUM(valor_total) AS custo_total
+    FROM silver_passagem
+    GROUP BY nome_orgao_superior
+    ORDER BY custo_total DESC
+    LIMIT 5;
+""")
+st.subheader("Top 5 órgãos por custo total")
+st.dataframe(df_orgao)
+st.plotly_chart(px.bar(df_orgao, x="nome_orgao_superior", y="custo_total"))
+
+df_destinos = run_query(conexao, """
+    SELECT destinos, AVG(valor_total) AS custo_medio
+    FROM silver_passagem
+    GROUP BY destinos
+    ORDER BY custo_medio DESC
+    LIMIT 3;
+""")
+st.subheader("Top 3 destinos por custo médio")
+st.dataframe(df_destinos)
+st.plotly_chart(px.bar(df_destinos, x="destinos", y="custo_medio"))
+
+df_duracao = run_query(conexao, """
+    SELECT nome_viajante, duracao_dias, valor_total
+    FROM silver_passagem
+    ORDER BY duracao_dias DESC
+    LIMIT 1;
+""")
+st.subheader("Viagem mais longa")
+st.dataframe(df_duracao)
+
+df_pagamento = run_query(conexao, """
+    SELECT tipo_pagamento, AVG(valor) AS valor_medio
+    FROM silver_pagamento
+    GROUP BY tipo_pagamento
+    ORDER BY valor_medio DESC
+    LIMIT 1;
+""")
+st.subheader("Tipo de pagamento com maior valor médio")
+st.dataframe(df_pagamento)
+
+df_transporte = run_query(conexao, """
+    SELECT meio_transporte, COUNT(*) AS qtd
+    FROM silver_trecho
+    GROUP BY meio_transporte
+    ORDER BY qtd DESC
+    LIMIT 1;
+""")
+st.subheader("Meio de transporte mais usado")
+st.dataframe(df_transporte)
+
+df_uf = run_query(conexao, """
+    SELECT destino_uf, COUNT(*) AS qtd
+    FROM silver_trecho
+    GROUP BY destino_uf
+    ORDER BY qtd DESC
+    LIMIT 1;
+""")
+st.subheader("UF de destino mais frequente")
+st.dataframe(df_uf)
+
+df_orgao_pagador = run_query(conexao, """
+    SELECT nome_orgao_pagador, SUM(valor) AS total_pago
+    FROM silver_pagamento
+    GROUP BY nome_orgao_pagador
+    ORDER BY total_pago DESC
+    LIMIT 1;
+""")
+st.subheader("Órgão que mais pagou no total")
+st.dataframe(df_orgao_pagador)
+
+conexao.close()
