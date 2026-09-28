@@ -113,7 +113,7 @@ execução anterior não comprova uma tentativa que terminou com erro.
 - Não há filtro adicional de datas nem limpeza nesta fase.
 
 **Escopo da Fase 1:** valida a Raw. A transformação relacional está descrita na Fase 2 abaixo.
-Gold e dashboard ainda precisam ser adaptados ao modelo atual.
+A Gold está descrita na Fase 3. O dashboard ainda precisa ser adaptado ao modelo atual.
 
 ---
 
@@ -142,6 +142,24 @@ contagens e valores aceitos/rejeitados e confirma a transação somente após a
 reconciliação. A segunda carga também deve apresentar as mesmas assinaturas de
 conteúdo. O relatório é salvo em `data/relatorio_silver.json`.
 
+## Fase 3 — Gold
+
+A tabela `gold.resumo_orgao_mes` agrega viagens por mês de início e órgão
+solicitante. Pagamentos, passagens e trechos são agrupados por viagem antes dos
+JOINs, evitando multiplicar os valores. A carga confere 17 totais e a maior
+duração contra a Silver antes do commit.
+
+```powershell
+.\.venv\Scripts\python.exe src/3_analise.py --repetir
+```
+
+Consulte a [modelagem Gold](docs/modelagem_gold.md) e as
+[consultas de negócio](sql/5_perguntas_negocio.sql). O relatório local fica em
+`data/relatorio_gold.json`. A tabela antiga `gold.gold_metricas` não é atualizada.
+
+**Validada em 28/09/2026:** duas cargas com 1.232 grupos e 48 testes aprovados.
+Veja as [evidências e primeiras respostas de negócio](docs/validacao_gold.md).
+
 ## Testes
 
 Testes de conversão e extração sem banco:
@@ -150,14 +168,15 @@ Testes de conversão e extração sem banco:
 .\.venv\Scripts\python.exe -m pytest -q tests/test_extracao.py tests/test_transformacao.py
 ```
 
-Com PostgreSQL e as duas fases carregadas, execute também os testes de integridade,
+Com PostgreSQL e as fases Raw e Silver carregadas, execute também os testes de integridade,
 idempotência, rejeições, constraints e rollback:
 
 ```powershell
 $env:RUN_RAW_DB_TESTS="1"
 $env:RUN_SILVER_DB_TESTS="1"
+$env:RUN_GOLD_DB_TESTS="1"
 .\.venv\Scripts\python.exe -m pytest -q tests/
-Remove-Item Env:RUN_RAW_DB_TESTS, Env:RUN_SILVER_DB_TESTS
+Remove-Item Env:RUN_RAW_DB_TESTS, Env:RUN_SILVER_DB_TESTS, Env:RUN_GOLD_DB_TESTS
 ```
 
 Os testes de integração criam e removem somente seus próprios bancos temporários.
@@ -165,7 +184,5 @@ Os testes de fumaça verificam o banco configurado e as camadas entregues: Raw e
 
 ## Próximas fases
 
-- Definir e implementar as métricas Gold sobre o modelo atual, evitando multiplicar
-  valores em junções entre tabelas com várias linhas por viagem.
 - Adaptar o dashboard e documentar respostas de negócio com resultados e gráficos.
 - Validar o download remoto do ZIP; as cargas anteriores usaram o arquivo local.
