@@ -62,3 +62,6 @@ $env:RUN_SILVER_DB_TESTS="1"
 ## Escopo
 
 Consulte a [modelagem e as regras da Silver](modelagem_silver.md). Gold, gráficos e respostas de negócio são as próximas entregas. O download remoto do ZIP continua pendente de validação: esta execução usou a origem local da Fase 1.
+
+Complemento de 28/09/2026: o download remoto foi validado e seu SHA-256 coincide
+com a fonte local. Consulte a [validação final](validacao_final.md).

@@ -74,15 +74,50 @@ def test_zip_local_nao_faz_download(tmp_path, monkeypatch):
     caminho = criar_zip(tmp_path)
     def falhar(*args, **kwargs):
         pytest.fail('Download indevido')
-    monkeypatch.setattr(etl.urllib.request, 'urlopen', falhar)
+    monkeypatch.setattr(etl.gdown, 'download', falhar)
     etl.obter_zip(caminho)
 
 
 def test_download_html_nao_e_aceito_como_zip(tmp_path, monkeypatch):
     monkeypatch.setenv('DRIVE_FILE_ID', 'id_exemplo')
-    monkeypatch.setattr(etl.urllib.request, 'urlopen', lambda *a, **k: io.BytesIO(b'<html>confirmar</html>'))
+    def baixar(**kwargs):
+        kwargs['output'].write(b'<html>confirmar</html>')
+        return kwargs['output']
+    monkeypatch.setattr(etl.gdown, 'download', baixar)
     caminho = tmp_path / 'download.zip'
     with pytest.raises(zipfile.BadZipFile):
         etl.obter_zip(caminho)
     assert not caminho.exists()
     assert not caminho.with_suffix('.zip.part').exists()
+
+
+def test_download_valido_e_substituicao_atomica(tmp_path, monkeypatch):
+    original = criar_zip(tmp_path).read_bytes()
+    monkeypatch.setenv('DRIVE_FILE_ID', 'id_publico')
+    def baixar(**kwargs):
+        assert kwargs['id'] == 'id_publico'
+        assert kwargs['use_cookies'] is False
+        assert kwargs['verify'] is True
+        kwargs['output'].write(original)
+        return kwargs['output']
+    monkeypatch.setattr(etl.gdown, 'download', baixar)
+    destino = tmp_path / 'novo.zip'
+    etl.obter_zip(destino)
+    assert destino.read_bytes() == original
+    assert not destino.with_suffix('.zip.part').exists()
+
+
+@pytest.mark.parametrize('erro', [True, False])
+def test_download_interrompido_limpa_temporario(tmp_path, monkeypatch, erro):
+    monkeypatch.setenv('DRIVE_FILE_ID', 'id_publico')
+    def baixar(**kwargs):
+        kwargs['output'].write(b'parcial')
+        if erro:
+            raise ConnectionError('Conexão interrompida')
+        return None
+    monkeypatch.setattr(etl.gdown, 'download', baixar)
+    destino = tmp_path / 'novo.zip'
+    with pytest.raises((ConnectionError, RuntimeError)):
+        etl.obter_zip(destino)
+    assert not destino.exists()
+    assert not destino.with_suffix('.zip.part').exists()

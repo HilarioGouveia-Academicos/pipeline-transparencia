@@ -11,8 +11,8 @@ def grafico_orgaos(dados, campo, titulo):
     dados['valor_formatado'] = dados[campo].map(lambda x: 'R$ ' + br(x))
     dados['indicador'] = 'Valor líquido' if campo == 'valor_total_liquido' else 'Média por viagem'
     chart = alt.Chart(dados[['rotulo', 'orgao', 'valor', 'valor_formatado', 'viagens', 'indicador']]).mark_bar().encode(
-        x=alt.X('valor:Q', title='Reais (R$)', axis=alt.Axis(format=',.0f'), scale=alt.Scale(zero=True)),
-        y=alt.Y('rotulo:N', title='Órgão solicitante', sort='-x', axis=alt.Axis(labelLimit=430)),
+        x=alt.X('valor:Q', title='Reais (R$)', axis=alt.Axis(format='.3s', tickCount=5), scale=alt.Scale(zero=True)),
+        y=alt.Y('rotulo:N', title='Órgão solicitante', sort='-x', axis=alt.Axis(labelLimit=310, labelOverlap=False, titleAngle=0, titleAlign='right', titleX=-12, titleY=-12)),
         color=alt.Color('indicador:N', title='Indicador', scale=alt.Scale(range=['#156b87']), legend=alt.Legend(orient='top')),
         tooltip=[alt.Tooltip('orgao:N', title='Órgão'), alt.Tooltip('valor_formatado:N', title='Valor'), alt.Tooltip('viagens:Q', title='Viagens', format=',')],
     ).properties(title=titulo, height=max(170, len(dados) * 34))

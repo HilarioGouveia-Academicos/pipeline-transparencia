@@ -92,3 +92,6 @@ As unidades com vínculo direto do Ministério das Relações Exteriores lideram
 - Pagamentos, valores da entidade viagem e detalhes de passagens não são somados entre si: têm definições e granularidades próprias.
 - O arquivo local é a origem validada. A obtenção remota do ZIP continua pendente.
 - As visualizações foram acrescentadas na Fase 4; consulte a [validação do dashboard](validacao_dashboard.md).
+
+Complemento de 28/09/2026: o download remoto foi validado e seu SHA-256 coincide
+com a fonte local. Consulte a [validação final](validacao_final.md).

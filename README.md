@@ -50,8 +50,8 @@ flowchart LR
 
 A Fase 1 usa exclusivamente o ZIP de seis meses de 2025 fornecido pelo curso:
 [pasta no Google Drive](https://drive.google.com/drive/folders/1J_0kDNI_2p3wHtmgbiwTpGD744beMvdL?usp=sharing).
-O arquivo local esperado é `data/viagens_2025_6meses.zip`. A equivalência com o
-arquivo remoto deve ser confirmada pelo responsável pela obtenção dos dados.
+O arquivo local esperado é `data/viagens_2025_6meses.zip`. O download remoto foi
+validado em 28/09/2026: seu SHA-256 coincide com o arquivo usado nas cargas.
 Não há fallback para o conjunto anual do Portal.
 
 **Validação executada:** duas cargas completas, com 1.879.385 registros em cada uma.
@@ -69,8 +69,9 @@ Copy-Item .env.example .env
 Preencha as credenciais no `.env`. Os caminhos relativos de `ZIP_DADOS` são
 resolvidos a partir da raiz do projeto. Se o ZIP não estiver disponível localmente,
 configure `DRIVE_FILE_ID` com o ID do **arquivo ZIP**, não o ID da pasta.
-O download exige acesso direto ao arquivo: respostas HTML de login ou confirmação
-são rejeitadas. Não se presume que o arquivo baixado seja um ZIP válido.
+O `.env.example` inclui o ID público verificado. O download usa `gdown` para
+tratar a confirmação de arquivos grandes do Drive e valida os quatro CSVs antes
+de aceitar o ZIP. Falhas de acesso ou arquivos inválidos interrompem a execução.
 
 ### Validação sem banco
 
@@ -202,7 +203,12 @@ Os testes de carga criam e removem somente seus próprios bancos temporários.
 Os testes de fumaça consultam Raw e Silver no banco configurado; o teste do
 dashboard real consulta a Gold sem modificá-la.
 
-## Próximas fases
+## Validação final
 
-- Conferir o layout do painel no navegador e os critérios finais de entrega.
-- Validar o download remoto do ZIP; as cargas anteriores usaram o arquivo local.
+Download remoto, build Docker e gráficos no navegador foram conferidos.
+Veja as [evidências finais e a análise dos oito critérios](docs/validacao_final.md),
+incluindo capturas e um CSV com os totais mensais. A suíte completa passou com
+56 testes.
+
+Permanece a conferência das instruções completas do curso sobre organização
+e eventuais perguntas obrigatórias, que não foram fornecidas.

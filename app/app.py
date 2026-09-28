@@ -80,15 +80,15 @@ st.header('1. Quais órgãos concentram o maior valor líquido?')
 lider = por_orgao.iloc[0]
 participacao = f' ({br(lider.valor_total_liquido * 100 / valor)}% do total selecionado)' if valor > 0 else ''
 st.markdown(f'**{lider.orgao}** lidera o recorte com **R$ {br(lider.valor_total_liquido)}**{participacao}, em **{br(int(lider.viagens), 0)} viagens**.')
-st.altair_chart(grafico_orgaos(por_orgao, 'valor_total_liquido', 'Até 10 órgãos com maior valor líquido'), width='stretch')
+st.altair_chart(grafico_orgaos(por_orgao, 'valor_total_liquido', 'Até 10 órgãos com maior valor líquido'), width='stretch', height=460, theme=None)
 st.caption('A ordem considera o valor líquido. Nomes abreviados no eixo podem ser consultados por inteiro ao passar o cursor ou na tabela de resultados.')
 
 st.header('2. Como variam o volume e o valor por mês de início?')
 mes_valor = por_mes.loc[por_mes['valor_total_liquido'].idxmax()]
 mes_volume = por_mes.loc[por_mes['viagens'].idxmax()]
 st.markdown(f'**{mes_valor.mes_inicio:%m/%Y}** apresenta o maior valor líquido (**R$ {br(mes_valor.valor_total_liquido)}**). O maior volume ocorre em **{mes_volume.mes_inicio:%m/%Y}**, com **{br(int(mes_volume.viagens), 0)} viagens**. Em caso de empate, é exibido o primeiro mês.')
-st.altair_chart(grafico_meses(por_mes, 'valor_total_liquido', 'Valor líquido por mês de início'), width='stretch')
-st.altair_chart(grafico_meses(por_mes, 'viagens', 'Viagens por mês de início'), width='stretch')
+st.altair_chart(grafico_meses(por_mes, 'valor_total_liquido', 'Valor líquido por mês de início'), width='stretch', height=360, theme=None)
+st.altair_chart(grafico_meses(por_mes, 'viagens', 'Viagens por mês de início'), width='stretch', height=360, theme=None)
 st.caption('Os valores são atribuídos ao início da viagem. Esta série não representa pagamentos efetuados em cada mês. Meses sem viagens para a seleção não são exibidos.')
 st.dataframe(tabela_exibicao(por_mes), hide_index=True)
 
@@ -100,7 +100,7 @@ if ranking.empty:
 else:
     maior = ranking.iloc[0]
     st.markdown(f'**{maior.orgao}** tem a maior média elegível: **R$ {br(maior.media_por_viagem)} por viagem**, considerando **{br(int(maior.viagens), 0)} viagens**.')
-    st.altair_chart(grafico_orgaos(ranking, 'media_por_viagem', 'Até 10 órgãos com maior média líquida por viagem'), width='stretch')
+    st.altair_chart(grafico_orgaos(ranking, 'media_por_viagem', 'Até 10 órgãos com maior média líquida por viagem'), width='stretch', height=460, theme=None)
     st.dataframe(tabela_exibicao(ranking[['orgao', 'viagens', 'valor_total_liquido', 'media_por_viagem']].head(10)), hide_index=True)
 st.caption('Média = soma do valor líquido ÷ quantidade de viagens. Uma média maior não demonstra desperdício: duração, finalidade e destinos precisam ser considerados.')
 

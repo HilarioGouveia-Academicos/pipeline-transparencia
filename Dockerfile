@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y \
 
 # Instalação isolada de dependências para reaproveitar a cache de camadas
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
+RUN --mount=type=secret,id=pip_ca,target=/tmp/pip-ca.pem \
+    if [ -f /tmp/pip-ca.pem ]; then export PIP_CERT=/tmp/pip-ca.pem; fi \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Cópia do código-fonte após a instalação das dependências

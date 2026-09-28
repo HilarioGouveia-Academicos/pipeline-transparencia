@@ -72,3 +72,29 @@ A implementação usa recursos nativos do Streamlit e gráficos Altair. A docume
 local da skill Streamlit foi consultada como referência de API e práticas; as
 consultas, cálculos e interface foram desenvolvidos para o modelo deste projeto,
 sem copiar um aplicativo de exemplo.
+
+## Rede com certificado adicional confiável
+
+Se o pip falhar com `CERTIFICATE_VERIFY_FAILED`, use o certificado fornecido pela
+rede/organização ou os certificados já confiáveis no sistema. No Windows, o pip
+24 pode usar essa confiança com `--use-feature=truststore`. Não desative TLS.
+
+Para reproduzir o build validado neste Windows, exporte apenas os certificados
+públicos já confiáveis para um arquivo local ignorado pelo Git:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import ssl; from pathlib import Path; p=Path('data'); p.mkdir(exist_ok=True); (p/'ca-certificates-windows.pem').write_text(''.join(ssl.DER_cert_to_PEM_cert(c) for c in ssl.create_default_context().get_ca_certs(binary_form=True)), encoding='ascii')"
+docker build --secret id=pip_ca,src=data/ca-certificates-windows.pem -t pipeline-transparencia-app .
+$env:APP_PORT="8502"
+docker compose up -d --no-build app
+```
+
+Nesse exemplo, acesse `http://localhost:8502`. O secret é opcional e fica
+acessível somente durante a instalação de dependências no build. Não faz parte
+da imagem final. Em redes que não precisam dele, use o comando Compose normal.
+O painel não requer esse arquivo para consultar o PostgreSQL.
+
+Para o download do Drive na mesma rede, defina temporariamente
+`REQUESTS_CA_BUNDLE` com o caminho absoluto desse arquivo. O `.env.example`
+contém o ID público do ZIP validado. O [relatório final](validacao_final.md)
+registra os hashes e as evidências visuais.

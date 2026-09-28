@@ -43,3 +43,6 @@ ENV/
 # -------------------------------------------------------------------
 .vscode/
 .idea/
+
+# Resultado agregado para conferência, sem dados pessoais.
+!docs/evidencias/resumo_mensal.csv
