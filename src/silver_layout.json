@@ -1,0 +1,467 @@
+{
+  "viagem": {
+    "campos": [
+      {
+        "origem": "Identificador do processo de viagem",
+        "nome": "id_viagem",
+        "tipo": "texto",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Número da Proposta (PCDP)",
+        "nome": "numero_proposta",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Situação",
+        "nome": "situacao",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Viagem Urgente",
+        "nome": "viagem_urgente",
+        "tipo": "booleano",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Justificativa Urgência Viagem",
+        "nome": "justificativa_urgencia",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Código do órgão superior",
+        "nome": "codigo_orgao_superior",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome do órgão superior",
+        "nome": "nome_orgao_superior",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Código órgão solicitante",
+        "nome": "codigo_orgao_solicitante",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome órgão solicitante",
+        "nome": "nome_orgao_solicitante",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "CPF viajante",
+        "nome": "cpf_viajante",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome",
+        "nome": "nome_viajante",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Cargo",
+        "nome": "cargo",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Função",
+        "nome": "funcao",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Descrição Função",
+        "nome": "descricao_funcao",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Período - Data de início",
+        "nome": "data_inicio",
+        "tipo": "data",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Período - Data de fim",
+        "nome": "data_fim",
+        "tipo": "data",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Destinos",
+        "nome": "destinos",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Motivo",
+        "nome": "motivo",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Valor diárias",
+        "nome": "valor_diarias",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Valor passagens",
+        "nome": "valor_passagens",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Valor devolução",
+        "nome": "valor_devolucao",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Valor outros gastos",
+        "nome": "valor_outros_gastos",
+        "tipo": "decimal",
+        "obrigatorio": true
+      }
+    ],
+    "extras": [
+      "duracao_dias",
+      "valor_total_bruto",
+      "valor_total_liquido"
+    ],
+    "ddl_extras": [
+      [
+        "duracao_dias",
+        "INTEGER NOT NULL"
+      ],
+      [
+        "valor_total_bruto",
+        "NUMERIC(18,2) NOT NULL"
+      ],
+      [
+        "valor_total_liquido",
+        "NUMERIC(18,2) NOT NULL"
+      ]
+    ]
+  },
+  "pagamento": {
+    "campos": [
+      {
+        "origem": "Identificador do processo de viagem",
+        "nome": "id_viagem",
+        "tipo": "texto",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Número da Proposta (PCDP)",
+        "nome": "numero_proposta",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Código do órgão superior",
+        "nome": "codigo_orgao_superior",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome do órgão superior",
+        "nome": "nome_orgao_superior",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Codigo do órgão pagador",
+        "nome": "codigo_orgao_pagador",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome do órgao pagador",
+        "nome": "nome_orgao_pagador",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Código da unidade gestora pagadora",
+        "nome": "codigo_unidade_gestora",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Nome da unidade gestora pagadora",
+        "nome": "nome_unidade_gestora",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Tipo de pagamento",
+        "nome": "tipo_pagamento",
+        "tipo": "texto",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Valor",
+        "nome": "valor",
+        "tipo": "decimal",
+        "obrigatorio": true
+      }
+    ],
+    "extras": [],
+    "ddl_extras": []
+  },
+  "passagem": {
+    "campos": [
+      {
+        "origem": "Identificador do processo de viagem",
+        "nome": "id_viagem",
+        "tipo": "texto",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Número da Proposta (PCDP)",
+        "nome": "numero_proposta",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Meio de transporte",
+        "nome": "meio_transporte",
+        "tipo": "transporte",
+        "obrigatorio": true
+      },
+      {
+        "origem": "País - Origem ida",
+        "nome": "origem_ida_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "UF - Origem ida",
+        "nome": "origem_ida_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Cidade - Origem ida",
+        "nome": "origem_ida_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "País - Destino ida",
+        "nome": "destino_ida_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "UF - Destino ida",
+        "nome": "destino_ida_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Cidade - Destino ida",
+        "nome": "destino_ida_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "País - Origem volta",
+        "nome": "origem_volta_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "UF - Origem volta",
+        "nome": "origem_volta_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Cidade - Origem volta",
+        "nome": "origem_volta_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Pais - Destino volta",
+        "nome": "destino_volta_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "UF - Destino volta",
+        "nome": "destino_volta_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Cidade - Destino volta",
+        "nome": "destino_volta_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Valor da passagem",
+        "nome": "valor_passagem",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Taxa de serviço",
+        "nome": "taxa_servico",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Data da emissão/compra",
+        "nome": "data_emissao",
+        "tipo": "data",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Hora da emissão/compra",
+        "nome": "hora_emissao",
+        "tipo": "hora",
+        "obrigatorio": false
+      }
+    ],
+    "extras": [
+      "origem_ida_uf",
+      "destino_ida_uf",
+      "origem_volta_uf",
+      "destino_volta_uf"
+    ],
+    "ddl_extras": [
+      [
+        "origem_ida_uf",
+        "VARCHAR(2)"
+      ],
+      [
+        "destino_ida_uf",
+        "VARCHAR(2)"
+      ],
+      [
+        "origem_volta_uf",
+        "VARCHAR(2)"
+      ],
+      [
+        "destino_volta_uf",
+        "VARCHAR(2)"
+      ]
+    ]
+  },
+  "trecho": {
+    "campos": [
+      {
+        "origem": "Identificador do processo de viagem ",
+        "nome": "id_viagem",
+        "tipo": "texto",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Número da Proposta (PCDP)",
+        "nome": "numero_proposta",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Sequência Trecho",
+        "nome": "sequencia",
+        "tipo": "inteiro",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Origem - Data",
+        "nome": "origem_data",
+        "tipo": "data",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Origem - País",
+        "nome": "origem_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Origem - UF",
+        "nome": "origem_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Origem - Cidade",
+        "nome": "origem_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Destino - Data",
+        "nome": "destino_data",
+        "tipo": "data",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Destino - País",
+        "nome": "destino_pais",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Destino - UF",
+        "nome": "destino_uf_nome",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Destino - Cidade",
+        "nome": "destino_cidade",
+        "tipo": "texto",
+        "obrigatorio": false
+      },
+      {
+        "origem": "Meio de transporte",
+        "nome": "meio_transporte",
+        "tipo": "transporte",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Número Diárias",
+        "nome": "numero_diarias",
+        "tipo": "decimal",
+        "obrigatorio": true
+      },
+      {
+        "origem": "Missao?",
+        "nome": "missao",
+        "tipo": "booleano",
+        "obrigatorio": true
+      }
+    ],
+    "extras": [
+      "origem_uf",
+      "destino_uf"
+    ],
+    "ddl_extras": [
+      [
+        "origem_uf",
+        "VARCHAR(2)"
+      ],
+      [
+        "destino_uf",
+        "VARCHAR(2)"
+      ]
+    ]
+  }
+}

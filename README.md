@@ -112,40 +112,60 @@ execução anterior não comprova uma tentativa que terminou com erro.
 - Cabeçalhos com espaços e acentos devem ser referenciados entre aspas no SQL.
 - Não há filtro adicional de datas nem limpeza nesta fase.
 
-**Escopo:** esta entrega valida a Raw. Os scripts Silver/Gold e o dashboard ainda
-precisam ser adaptados ao contrato fiel dos CSVs; não estão validados como fluxo completo.
-A documentação de arquitetura abaixo descreve o objetivo das fases seguintes.
+**Escopo da Fase 1:** valida a Raw. A transformação relacional está descrita na Fase 2 abaixo.
+Gold e dashboard ainda precisam ser adaptados ao modelo atual.
 
 ---
 
+## Fase 2 — Silver
+
+A Silver mantém quatro entidades: viagens, pagamentos, passagens e trechos.
+Os detalhes se relacionam diretamente ao identificador original da viagem.
+Datas, horários, booleanos e números são convertidos explicitamente. Registros
+inválidos ficam em `silver.rejeitados`, com valores originais e motivos.
+
+Consulte [a modelagem, regras e dicionário da Silver](docs/modelagem_silver.md).
+
+**Validada em 28/09/2026:** duas cargas completas com resultados iguais e
+45 testes aprovados. Foram aceitos 1.852.726 registros e preservados na auditoria
+26.659 trechos com transporte inválido. Veja as
+[evidências e a reconciliação da Silver](docs/validacao_silver.md).
+
+Com a Raw carregada:
+
+```powershell
+.\.venv\Scripts\python.exe src/2_transformar.py --repetir
+```
+
+O script cria as tabelas pelo `sql/2_criar_silver.sql`, carrega em blocos, verifica
+contagens e valores aceitos/rejeitados e confirma a transação somente após a
+reconciliação. A segunda carga também deve apresentar as mesmas assinaturas de
+conteúdo. O relatório é salvo em `data/relatorio_silver.json`.
+
 ## Testes
+
+Testes de conversão e extração sem banco:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q tests/test_extracao.py tests/test_transformacao.py
 ```
 
-Os testes de extração cobrem preservação de valores, leitura em blocos,
-CSV ausente, linhas com quantidade incorreta de campos, valores NUL,
-assinaturas que preservam duplicatas e rejeição de download HTML.
-Para verificar transação e rollback em um banco temporário isolado:
+Com PostgreSQL e as duas fases carregadas, execute também os testes de integridade,
+idempotência, rejeições, constraints e rollback:
 
 ```powershell
 $env:RUN_RAW_DB_TESTS="1"
-.\.venv\Scripts\python.exe -m pytest -q tests/test_raw_integracao.py
-Remove-Item Env:RUN_RAW_DB_TESTS
+$env:RUN_SILVER_DB_TESTS="1"
+.\.venv\Scripts\python.exe -m pytest -q tests/
+Remove-Item Env:RUN_RAW_DB_TESTS, Env:RUN_SILVER_DB_TESTS
 ```
 
-Esse teste exige permissão de criar banco no PostgreSQL e remove somente o banco
-temporário que ele próprio criou. Verifica duas cargas e restauração do conteúdo
-anterior quando a conferência final falha.
-
-Os testes de conexão e de existência de Silver/Gold exigem PostgreSQL e as
-fases seguintes preparadas; não são o aceite isolado da Fase 1.
+Os testes de integração criam e removem somente seus próprios bancos temporários.
+Os testes de fumaça verificam o banco configurado e as camadas entregues: Raw e Silver.
 
 ## Próximas fases
 
-- Adaptar a Silver aos cabeçalhos originais e relacionar os quatro arquivos pelo
-  identificador do processo de viagem.
-- Corrigir as regras das métricas Gold e integrar o dashboard.
-- Documentar respostas de negócio com resultados efetivamente executados.
-- Versionar os arquivos e registrar a evolução por funcionalidade.
+- Definir e implementar as métricas Gold sobre o modelo atual, evitando multiplicar
+  valores em junções entre tabelas com várias linhas por viagem.
+- Adaptar o dashboard e documentar respostas de negócio com resultados e gráficos.
+- Validar o download remoto do ZIP; as cargas anteriores usaram o arquivo local.
