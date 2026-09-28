@@ -9,7 +9,7 @@ seis meses de 2025, preservando a fonte e produzindo dados relacionais auditáve
 | --- | --- | --- |
 | Raw | Preservar os quatro CSVs integralmente | `src/1_extrair.py`, `sql/1_criar_raw.sql` |
 | Silver | Converter, relacionar e registrar rejeições | `src/2_transformar.py`, `src/silver.py`, `sql/2_criar_silver.sql` |
-| Gold | Agregar métricas de negócio | Próxima etapa; o script legado ainda precisa ser adaptado |
+| Gold | Agregar por mês de início e órgão solicitante | `src/3_analise.py`, `src/gold.py`, `sql/3_criar_gold.sql`, `sql/4_carregar_gold.sql` |
 | Dashboard | Exibir resultados e gráficos | Próxima etapa; a versão inicial ainda precisa ser adaptada |
 
 ## Fluxo
@@ -26,7 +26,7 @@ categoria de pagamento. Registros rejeitados preservam os valores brutos em JSON
 
 A modelagem vigente, os critérios de rejeição e o dicionário completo estão em
 [modelagem_silver.md](docs/modelagem_silver.md). O arquivo `sql/0_criar_banco.sql`
-reúne as estruturas atuais e a tabela Gold inicial; não é uma migração automática
+reúne as estruturas atuais das três camadas; não é uma migração automática
 para instalações com versões anteriores das tabelas.
 
 ## Integridade e reexecução
@@ -46,3 +46,7 @@ independentemente do dashboard. Credenciais ficam no `.env` local; `.env.example
 contém somente exemplos. ZIPs, CSVs e dados de auditoria não são enviados ao Git.
 
 As instruções de execução e testes estão no [README](README.md).
+
+A [modelagem Gold](docs/modelagem_gold.md) define os indicadores e as regras de
+agregação. Os detalhes são agrupados por viagem antes dos JOINs para evitar
+multiplicação de valores. O dashboard ainda precisa ser adaptado.
