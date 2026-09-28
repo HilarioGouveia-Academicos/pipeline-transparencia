@@ -10,7 +10,7 @@ seis meses de 2025, preservando a fonte e produzindo dados relacionais auditáve
 | Raw | Preservar os quatro CSVs integralmente | `src/1_extrair.py`, `sql/1_criar_raw.sql` |
 | Silver | Converter, relacionar e registrar rejeições | `src/2_transformar.py`, `src/silver.py`, `sql/2_criar_silver.sql` |
 | Gold | Agregar por mês de início e órgão solicitante | `src/3_analise.py`, `src/gold.py`, `sql/3_criar_gold.sql`, `sql/4_carregar_gold.sql` |
-| Dashboard | Exibir resultados e gráficos | Próxima etapa; a versão inicial ainda precisa ser adaptada |
+| Dashboard | Filtrar e visualizar a Gold | `app/app.py`, `src/dashboard.py`, `src/graficos.py` |
 
 ## Fluxo
 
@@ -49,4 +49,6 @@ As instruções de execução e testes estão no [README](README.md).
 
 A [modelagem Gold](docs/modelagem_gold.md) define os indicadores e as regras de
 agregação. Os detalhes são agrupados por viagem antes dos JOINs para evitar
-multiplicação de valores. O dashboard ainda precisa ser adaptado.
+multiplicação de valores. O [dashboard](docs/dashboard.md) consulta a Gold com cache de cinco minutos,
+filtros por órgão/mês e quatro gráficos. Cálculos usam Decimal; números de ponto
+flutuante são usados apenas para desenhar os gráficos.

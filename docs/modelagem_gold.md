@@ -59,7 +59,7 @@ em `data/relatorio_gold.json`; um relatório antigo não comprova uma nova execu
 
 A antiga tabela `gold.gold_metricas`, se existir no banco, não é consumida nem
 apagada por esta fase. Sua estrutura foi substituída nos scripts do projeto.
-O dashboard legado ainda precisa ser adaptado à nova tabela.
+O [dashboard](dashboard.md) consulta a nova tabela desde a Fase 4.
 
 ## Perguntas apoiadas por esta entrega
 
@@ -68,5 +68,5 @@ O dashboard legado ainda precisa ser adaptado à nova tabela.
 3. Quais órgãos apresentam maior valor médio por viagem, e qual é seu volume?
 
 As consultas estão em `sql/5_perguntas_negocio.sql`. Os resultados devem ser
-interpretados junto do volume e da cobertura dos detalhes aceitos. A entrega
-seguinte acrescentará visualizações e aprofundará as respostas de negócio.
+interpretados junto do volume e da cobertura dos detalhes aceitos. O [dashboard](dashboard.md) apresenta as visualizações e respostas calculadas
+para os filtros selecionados.

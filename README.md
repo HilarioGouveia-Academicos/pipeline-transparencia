@@ -17,7 +17,7 @@ Este projeto resolve esse problema construindo um **pipeline de dados completo**
 
 ## 🛠️ Técnicas e Tecnologias Utilizadas
 
-- **Python (pandas, psycopg2, plotly)** → extração, transformação e análise.
+- **Python (pandas, psycopg2, Altair)** → extração, transformação e análise.
 - **PostgreSQL** → armazenamento estruturado com integridade referencial.
 - **Streamlit** → visualização interativa dos resultados.
 - **Docker + docker-compose** → ambiente containerizado e replicável.
@@ -29,7 +29,14 @@ Este projeto resolve esse problema construindo um **pipeline de dados completo**
 
 A arquitetura Medallion organiza o pipeline em três camadas principais, garantindo rastreabilidade e qualidade dos dados:
 
-![Arquitetura Medallion Pipeline](https://copilot.microsoft.com/th/id/BCO.54b33819-3ece-48f8-a0cb-8e0e4cda7a70.png)
+```mermaid
+flowchart LR
+    ZIP[ZIP com quatro CSVs] --> Raw[Raw: conteúdo original]
+    Raw --> Silver[Silver: dados tipados e relacionados]
+    Silver --> Gold[Gold: órgão solicitante e mês]
+    Silver --> Auditoria[Registros rejeitados]
+    Gold --> Painel[Dashboard: filtros e gráficos]
+```
 
 **Fluxo resumido:**
 
@@ -113,7 +120,7 @@ execução anterior não comprova uma tentativa que terminou com erro.
 - Não há filtro adicional de datas nem limpeza nesta fase.
 
 **Escopo da Fase 1:** valida a Raw. A transformação relacional está descrita na Fase 2 abaixo.
-A Gold está descrita na Fase 3. O dashboard ainda precisa ser adaptado ao modelo atual.
+A Gold está descrita na Fase 3 e o dashboard na Fase 4.
 
 ---
 
@@ -160,6 +167,17 @@ Consulte a [modelagem Gold](docs/modelagem_gold.md) e as
 **Validada em 28/09/2026:** duas cargas com 1.232 grupos e 48 testes aprovados.
 Veja as [evidências e primeiras respostas de negócio](docs/validacao_gold.md).
 
+## Fase 4 — Dashboard e perguntas de negócio
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app/app.py
+```
+
+O painel usa a Gold, com filtros por mês de início e órgão solicitante, três
+indicadores, quatro gráficos e respostas às três perguntas de negócio da Fase 3.
+Consulte o [guia do dashboard](docs/dashboard.md) e a
+[validação do painel](docs/validacao_dashboard.md).
+
 ## Testes
 
 Testes de conversão e extração sem banco:
@@ -168,21 +186,23 @@ Testes de conversão e extração sem banco:
 .\.venv\Scripts\python.exe -m pytest -q tests/test_extracao.py tests/test_transformacao.py
 ```
 
-Com PostgreSQL e as fases Raw e Silver carregadas, execute também os testes de integridade,
+Com PostgreSQL e as fases Raw, Silver e Gold carregadas, execute também os testes de integridade,
 idempotência, rejeições, constraints e rollback:
 
 ```powershell
 $env:RUN_RAW_DB_TESTS="1"
 $env:RUN_SILVER_DB_TESTS="1"
 $env:RUN_GOLD_DB_TESTS="1"
+$env:RUN_DASHBOARD_DB_TESTS="1"
 .\.venv\Scripts\python.exe -m pytest -q tests/
-Remove-Item Env:RUN_RAW_DB_TESTS, Env:RUN_SILVER_DB_TESTS, Env:RUN_GOLD_DB_TESTS
+Remove-Item Env:RUN_RAW_DB_TESTS, Env:RUN_SILVER_DB_TESTS, Env:RUN_GOLD_DB_TESTS, Env:RUN_DASHBOARD_DB_TESTS
 ```
 
-Os testes de integração criam e removem somente seus próprios bancos temporários.
-Os testes de fumaça verificam o banco configurado e as camadas entregues: Raw e Silver.
+Os testes de carga criam e removem somente seus próprios bancos temporários.
+Os testes de fumaça consultam Raw e Silver no banco configurado; o teste do
+dashboard real consulta a Gold sem modificá-la.
 
 ## Próximas fases
 
-- Adaptar o dashboard e documentar respostas de negócio com resultados e gráficos.
+- Conferir o layout do painel no navegador e os critérios finais de entrega.
 - Validar o download remoto do ZIP; as cargas anteriores usaram o arquivo local.
