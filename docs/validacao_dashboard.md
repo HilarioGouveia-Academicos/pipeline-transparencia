@@ -26,7 +26,8 @@ A suíte completa terminou com **53 testes aprovados em 32,54 segundos**, com
 
 O AppTest verifica a execução, os elementos e as interações dos widgets; não
 verifica pixels, cortes de texto ou responsividade em um navegador. A inspeção
-visual em navegador e o build da imagem Docker não foram executados nesta etapa.
+visual em navegador e o build da imagem Docker foram concluídos posteriormente
+na [validação final](validacao_final.md), com correções de instalação e gráficos.
 
 ## Critérios de avaliação apoiados
 
@@ -37,6 +38,6 @@ visual em navegador e o build da imagem Docker não foram executados nesta etapa
 - **Organização/documentação:** entrada `app/app.py`, módulos de consulta e gráficos,
   testes e [guia de execução](dashboard.md). Docker e Compose usam o mesmo caminho.
 
-O download remoto do ZIP continua pendente de validação. A execução do pipeline
+O download remoto do ZIP foi comprovado posteriormente na [validação final](validacao_final.md). A execução do pipeline
 utilizou o arquivo local, conforme registrado nas entregas anteriores. Esta
 validação não atribui nota nem comprova ausência de plágio por comparação externa.

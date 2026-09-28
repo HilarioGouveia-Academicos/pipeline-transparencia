@@ -7,9 +7,8 @@ import json
 import logging
 import os
 from pathlib import Path
-import shutil
 import sys
-import urllib.request
+import gdown
 import zipfile
 
 from psycopg2 import sql
@@ -46,11 +45,13 @@ def obter_zip(caminho):
     caminho.parent.mkdir(parents=True, exist_ok=True)
     temporario = caminho.with_suffix('.zip.part')
     try:
-        req = urllib.request.Request(
-            f'https://drive.google.com/uc?export=download&id={file_id}',
-            headers={'User-Agent': 'pipeline-transparencia/1.0'})
-        with urllib.request.urlopen(req, timeout=120) as resposta, temporario.open('wb') as destino:
-            shutil.copyfileobj(resposta, destino, length=1024 * 1024)
+        # gdown resolve a confirmação de arquivos públicos grandes do Drive.
+        # O stream pertence ao projeto: falhas não deixam temporários da biblioteca.
+        with temporario.open('wb') as destino:
+            resultado = gdown.download(id=file_id, output=destino, quiet=True,
+                                       use_cookies=False, verify=True)
+            if resultado is None:
+                raise RuntimeError('O download do Google Drive não foi concluído')
         validar_zip(temporario)
         temporario.replace(caminho)
     except Exception:
