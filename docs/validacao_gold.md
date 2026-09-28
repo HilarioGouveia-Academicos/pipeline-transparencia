@@ -91,4 +91,4 @@ As unidades com vínculo direto do Ministério das Relações Exteriores lideram
 - Há 14.768 viagens com código de órgão `-1` e nome ausente, somando R$ 21.900.462,73 (1,84% do valor líquido). Esse grupo foi preservado.
 - Pagamentos, valores da entidade viagem e detalhes de passagens não são somados entre si: têm definições e granularidades próprias.
 - O arquivo local é a origem validada. A obtenção remota do ZIP continua pendente.
-- Estas respostas ainda precisam ser acompanhadas de visualizações no dashboard para completar os critérios de dataviz da avaliação.
+- As visualizações foram acrescentadas na Fase 4; consulte a [validação do dashboard](validacao_dashboard.md).

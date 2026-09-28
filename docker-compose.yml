@@ -36,7 +36,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run app/app.py --server.port=8501 --server.address=0.0.0.0
 
 volumes:
   db_data:
