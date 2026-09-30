@@ -103,3 +103,29 @@ def test_painel_com_gold_real():
     assert at.metric[0].value == dashboard.br(int(fonte['viagens'].sum()), 0)
     assert at.metric[1].value == 'R$ ' + dashboard.br(sum(fonte['valor_total_liquido'], Decimal(0)))
     assert len(at.get('vega_lite_chart')) == 4
+
+
+@pytest.mark.parametrize('banco_ausente', [False, True])
+def test_criacao_exige_confirmacao(monkeypatch, banco_ausente):
+    import banco
+    from psycopg2.errors import InvalidCatalogName, UndefinedTable
+    chamadas = []
+
+    def falhar():
+        if banco_ausente:
+            try:
+                raise InvalidCatalogName('database ausente')
+            except InvalidCatalogName as erro:
+                raise RuntimeError('conexao indisponivel') from erro
+        raise UndefinedTable('gold ausente')
+
+    monkeypatch.setattr(dashboard, 'carregar_gold', falhar)
+    monkeypatch.setattr(banco, 'criar_estrutura', lambda **kwargs: chamadas.append(kwargs))
+    at = AppTest.from_file(str(APP), default_timeout=30).run()
+    assert not at.exception and at.warning and not chamadas
+    next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
+    assert not chamadas and 'confirmação' in at.error[0].value
+    at.checkbox[0].check()
+    next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
+    assert chamadas == [{'criar_database': banco_ausente}]
+    assert at.success and not at.exception
