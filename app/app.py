@@ -6,11 +6,15 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
+from psycopg2.errors import InvalidCatalogName, UndefinedTable, InvalidSchemaName
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import dashboard as dados_painel
 from dashboard import agregar, br, filtrar, preparar, tabela_exibicao
 from graficos import grafico_meses, grafico_orgaos
+from banco import criar_estrutura
+from config import POSTGRES_CONFIG
+from psycopg2 import OperationalError
 
 st.set_page_config(page_title='Viagens a serviço | Transparência', page_icon=':material/travel_explore:', layout='wide')
 st.title('Viagens a serviço')
@@ -29,8 +33,32 @@ with st.sidebar:
 
 try:
     fonte, consultado_em = carregar()
-except Exception:
+except Exception as erro:
     logging.exception('Não foi possível carregar o painel')
+    causa = erro.__cause__ or erro.__context__ or erro
+    banco_ausente = isinstance(causa, InvalidCatalogName) or (
+        isinstance(causa, OperationalError)
+        and f'database "{POSTGRES_CONFIG["dbname"]}" does not exist' in str(causa)
+    )
+    if banco_ausente or isinstance(erro, (UndefinedTable, InvalidSchemaName)):
+        st.warning('O banco configurado não existe.' if banco_ausente else 'As tabelas necessárias ao painel ainda não existem.')
+        st.write('Você pode criar o banco e as tabelas necessários para este projeto. Os dados deverão ser carregados depois.' if banco_ausente else 'Você pode criar as tabelas deste projeto no banco conectado. Os dados deverão ser carregados depois.')
+        with st.form('confirmar_criacao'):
+            confirmado = st.checkbox('Confirmo a criação no banco configurado')
+            criar = st.form_submit_button('Criar banco e tabelas' if banco_ausente else 'Criar tabelas')
+        if criar:
+            if not confirmado:
+                st.error('Marque a confirmação antes de criar.')
+            else:
+                try:
+                    with st.spinner('Criando a estrutura do projeto…'):
+                        criar_estrutura(criar_database=banco_ausente)
+                    carregar.clear()
+                    st.success('Estrutura criada. Clique em Atualizar dados para consultar novamente.')
+                except Exception:
+                    logging.exception('Não foi possível criar a estrutura')
+                    st.error('Não foi possível criar a estrutura. Confira as permissões de criação do usuário do banco e os logs do app.')
+        st.stop()
     st.error('Não foi possível consultar os dados. Verifique a conexão com o banco e a conclusão da etapa Gold.')
     st.stop()
 

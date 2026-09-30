@@ -6,11 +6,36 @@ Camada de acesso ao PostgreSQL: conexão, execução e inserções.
 
 import psycopg2
 from psycopg2 import Error
+from psycopg2 import sql as pg_sql
 from config import POSTGRES_CONFIG
+from pathlib import Path
 import logging
 
 # Configuração básica de logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+
+def criar_estrutura(criar_database=False):
+    """Executa o mesmo SQL da instalação manual, somente após confirmação na UI."""
+    script = (Path(__file__).resolve().parents[1] / 'sql/0_criar_banco.sql').read_text(encoding='utf-8-sig')
+    if criar_database:
+        configuracao = {**POSTGRES_CONFIG, 'dbname': 'postgres'}
+        manutencao = psycopg2.connect(**configuracao)
+        try:
+            manutencao.autocommit = True
+            with manutencao.cursor() as cursor:
+                cursor.execute('SELECT 1 FROM pg_database WHERE datname = %s', (POSTGRES_CONFIG['dbname'],))
+                if cursor.fetchone() is None:
+                    cursor.execute(pg_sql.SQL('CREATE DATABASE {}').format(pg_sql.Identifier(POSTGRES_CONFIG['dbname'])))
+        finally:
+            manutencao.close()
+    conexao = conectar()
+    try:
+        with conexao:
+            with conexao.cursor() as cursor:
+                cursor.execute(script)
+    finally:
+        conexao.close()
 
 def conectar():
     """
