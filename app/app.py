@@ -15,6 +15,8 @@ from graficos import grafico_meses, grafico_orgaos
 from banco import criar_estrutura
 from config import POSTGRES_CONFIG
 from psycopg2 import OperationalError
+from carga import carregar_pipeline
+import os
 
 st.set_page_config(page_title='Viagens a serviço | Transparência', page_icon=':material/travel_explore:', layout='wide')
 st.title('Viagens a serviço')
@@ -30,6 +32,34 @@ with st.sidebar:
     st.header('Consultar viagens')
     if st.button('Atualizar dados', icon=':material/refresh:', key='atualizar'):
         carregar.clear()
+    with st.expander('Carregar dados do projeto'):
+        st.write('Executa Raw, Silver e Gold no banco configurado. Uma nova carga substitui os dados dessas camadas. A operação pode levar vários minutos.')
+        with st.form('confirmar_carga'):
+            drive_id = st.text_input('ID do arquivo ZIP no Google Drive',
+                                     value=os.getenv('DRIVE_FILE_ID', '1R6re1574aCeqNfwJXQ_T7BwHCEsPfgvc'))
+            autorizar_carga = st.checkbox('Confirmo a carga e a substituição dos dados', key='autorizar_carga')
+            iniciar_carga = st.form_submit_button('Carregar dados')
+        if iniciar_carga:
+            if not autorizar_carga:
+                st.error('Marque a confirmação antes de carregar.')
+            else:
+                barra = st.progress(0, text='Preparando a carga…')
+                try:
+                    carregar_pipeline(drive_id.strip(), lambda valor, texto: barra.progress(valor, text=texto))
+                except Exception as erro_carga:
+                    logging.exception('Falha na carga solicitada pelo painel')
+                    st.error(str(erro_carga) if isinstance(erro_carga, (ValueError, RuntimeError)) else 'A carga falhou. Verifique a conexão e os logs das etapas.')
+                    for etapa in ('raw', 'silver', 'gold'):
+                        arquivo_log = Path(__file__).resolve().parents[1] / 'data' / f'carga_{etapa}.log'
+                        if arquivo_log.exists():
+                            st.download_button(f'Baixar log {etapa}', arquivo_log.read_bytes(), file_name=arquivo_log.name, key=f'log_{etapa}')
+                    st.stop()
+                carregar.clear()
+                st.session_state['carga_concluida'] = True
+                st.rerun()
+
+if st.session_state.pop('carga_concluida', False):
+    st.success('Dados carregados. O painel já está atualizado.')
 
 try:
     fonte, consultado_em = carregar()
@@ -44,7 +74,7 @@ except Exception as erro:
         st.warning('O banco configurado não existe.' if banco_ausente else 'As tabelas necessárias ao painel ainda não existem.')
         st.write('Você pode criar o banco e as tabelas necessários para este projeto. Os dados deverão ser carregados depois.' if banco_ausente else 'Você pode criar as tabelas deste projeto no banco conectado. Os dados deverão ser carregados depois.')
         with st.form('confirmar_criacao'):
-            confirmado = st.checkbox('Confirmo a criação no banco configurado')
+            confirmado = st.checkbox('Confirmo a criação no banco configurado', key='autorizar_criacao')
             criar = st.form_submit_button('Criar banco e tabelas' if banco_ausente else 'Criar tabelas')
         if criar:
             if not confirmado:

@@ -125,7 +125,20 @@ def test_criacao_exige_confirmacao(monkeypatch, banco_ausente):
     assert not at.exception and at.warning and not chamadas
     next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
     assert not chamadas and 'confirmação' in at.error[0].value
-    at.checkbox[0].check()
+    at.checkbox(key='autorizar_criacao').check()
     next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
     assert chamadas == [{'criar_database': banco_ausente}]
     assert at.success and not at.exception
+
+
+def test_carga_exige_confirmacao_e_atualiza_painel(fonte, monkeypatch):
+    import carga
+    chamadas = []
+    monkeypatch.setattr(dashboard, 'carregar_gold', lambda: (fonte, datetime.now(timezone.utc)))
+    monkeypatch.setattr(carga, 'carregar_pipeline', lambda *args: chamadas.append(args[0]))
+    at = AppTest.from_file(str(APP), default_timeout=30).run()
+    next(b for b in at.button if b.label == 'Carregar dados').click().run()
+    assert not chamadas and at.error
+    at.checkbox(key='autorizar_carga').check()
+    next(b for b in at.button if b.label == 'Carregar dados').click().run()
+    assert len(chamadas) == 1 and at.success and not at.exception
