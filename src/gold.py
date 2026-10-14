@@ -1,6 +1,7 @@
 """Carga Gold transacional, com reconciliação independente e assinatura."""
 import hashlib
 import json
+import gold_dashboard
 from pathlib import Path
 
 SQL = Path(__file__).resolve().parents[1] / 'sql'
@@ -55,6 +56,7 @@ def executar_gold(conn, esperado=None):
             cur.execute('TRUNCATE gold.resumo_orgao_mes')
             cur.execute((SQL / '4_carregar_gold.sql').read_text(encoding='utf-8-sig'))
         resultado = verificar(conn)
+        resultado['dashboard'] = gold_dashboard.materializar(conn)
         if esperado is not None and resultado != esperado:
             raise ValueError('Reexecução Gold divergente; carga anterior preservada')
     return resultado

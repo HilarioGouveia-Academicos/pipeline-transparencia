@@ -97,10 +97,8 @@ def inteiro(valor):
 
 
 def transporte(valor):
-    valor = texto(valor)
-    if valor is not None and dobrar(valor) == 'invalido':
-        raise ValueError('transporte_invalido')
-    return valor
+    # "Inválido" é uma categoria da fonte, preservada na análise do notebook.
+    return texto(valor)
 
 
 @lru_cache(maxsize=32768)
@@ -269,6 +267,16 @@ def executar_silver(conn, tamanho=TAMANHO_BLOCO, esperado=None):
         with conn:
             with conn.cursor() as cur:
                 cur.execute((PASTA_RAIZ / 'sql/2_criar_silver.sql').read_text(encoding='utf-8'))
+                # Migração restrita às duas constraints da antiga regra de transporte.
+                cur.execute('''SELECT conrelid::regclass::text, conname
+                    FROM pg_constraint WHERE contype='c'
+                    AND conrelid IN ('silver.silver_passagem'::regclass, 'silver.silver_trecho'::regclass)
+                    AND pg_get_constraintdef(oid) LIKE '%%lower(btrim(meio_transporte))%%'
+                    AND pg_get_constraintdef(oid) LIKE '%%inválido%%' ''')
+                for tabela, nome in cur.fetchall():
+                    schema, entidade = tabela.split('.')
+                    cur.execute(sql.SQL('ALTER TABLE {} DROP CONSTRAINT {}').format(
+                        sql.Identifier(schema, entidade), sql.Identifier(nome)))
             conferir_estrutura(conn)
             with conn.cursor() as cur:
                 cur.execute('TRUNCATE silver.silver_pagamento, silver.silver_passagem, silver.silver_trecho, silver.silver_viagem, silver.rejeitados')

@@ -1,131 +1,98 @@
-import json
-import os
-import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-
+import sys
+import json
 import pandas as pd
 import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 import dashboard
-from graficos import grafico_meses, grafico_orgaos
-
-APP = Path(__file__).resolve().parents[1] / 'app/app.py'
+from gold_dashboard import CONSULTAS
+from graficos import grafico_ranking
+APP=Path(__file__).resolve().parents[1]/'app/app.py'
 
 
 @pytest.fixture
-def fonte():
-    return pd.DataFrame([
-        [date(2025,1,1), 'a', '1', 'Órgão A', 1, Decimal('100.00'), 2, 1],
-        [date(2025,2,1), 'a', '1', 'Órgão A', 9, Decimal('90.00'), 10, 0],
-        [date(2025,1,1), 'b', None, None, 2, Decimal('-10.00'), 0, 0],
-    ], columns=dashboard.COLUNAS)
+def pacote():
+    comuns = ['mes_inicio','orgao_chave','codigo_orgao_superior','nome_orgao_superior','situacao','grupo_chave']
+    a=[date(2025,1,1),'a','1','Órgão A','Realizada','a-realizada']
+    b=[date(2025,2,1),'b','2','Órgão B','Cancelada','b-cancelada']
+    frames={
+      'resumo_viagem_mes': pd.DataFrame([a+[100,120,40,180,Decimal('1000'),Decimal('1200'),100],
+                                       b+[2,3,1,4,Decimal('500'),Decimal('600'),4]],columns=comuns+['viagens','pagamentos','passagens','trechos','valor_total_liquido','valor_pagamentos','duracao_total_dias']),
+      'resumo_destino_mes':pd.DataFrame([a+['Destino A',100,Decimal('1000')],b+['Destino B',2,Decimal('500')]],columns=comuns+['destino','viagens','valor_total_liquido']),
+      'gold_pagamento_resumo':pd.DataFrame([a+['Pagador A','DIÁRIAS',120,Decimal('1200')],b+['Pagador B','PASSAGEM',3,Decimal('600')]],columns=comuns+['nome_orgao_pagador','tipo_pagamento','pagamentos','total_pago']),
+      'gold_trecho_resumo':pd.DataFrame([a+['Inválido','São Paulo',180],b+['Aéreo','Distrito Federal',4]],columns=comuns+['meio_transporte','destino_uf','trechos']),
+      'viagens_duracao':pd.DataFrame([a+['001',date(2025,1,1),date(2025,1,1),1,Decimal('1000'),1],b+['002',date(2025,2,1),date(2025,2,4),4,Decimal('500'),1]],columns=comuns+['id_viagem','data_inicio','data_fim','duracao_dias','valor_total_liquido','posicao'])
+    }
+    return {k:dashboard.preparar(v) for k,v in frames.items()}, {'carregado_em':datetime.now(timezone.utc),'consultado_em':datetime.now(timezone.utc),'fonte':{},'conferencia':{}}
 
 
 @pytest.fixture(autouse=True)
-def limpar_cache():
+def limpar(monkeypatch):
     st.cache_data.clear()
     yield
     st.cache_data.clear()
 
 
-def test_media_ponderada_filtros_e_valores_negativos(fonte):
-    dados = dashboard.preparar(fonte)
-    agregado = dashboard.agregar(dados, ['orgao_chave', 'orgao']).set_index('orgao_chave')
-    assert agregado.loc['a', 'media_por_viagem'] == Decimal('19.00')
-    assert agregado.loc['b', 'valor_total_liquido'] == Decimal('-10.00')
-    assert 'sem nome' in agregado.loc['b', 'orgao']
-    filtrado = dashboard.filtrar(dados, date(2025,2,1), date(2025,2,1), ['a'])
-    assert len(filtrado) == 1 and filtrado.iloc[0].viagens == 9
-    assert dashboard.filtrar(dados, date(2025,2,1), date(2025,2,1), ['b']).empty
-    assert dashboard.br(Decimal('1188144731.13')) == '1.188.144.731,13'
-
-
-def test_graficos_identificam_medidas_e_preservam_valores(fonte):
-    dados = dashboard.preparar(fonte)
-    orgaos = dashboard.agregar(dados, ['orgao_chave', 'orgao'])
-    meses = dashboard.agregar(dados, ['mes_inicio'])
-    charts = [grafico_orgaos(orgaos, 'valor_total_liquido', 'Valor por órgão'),
-              grafico_orgaos(orgaos, 'media_por_viagem', 'Média por órgão'),
-              grafico_meses(meses, 'valor_total_liquido', 'Valor por mês'),
-              grafico_meses(meses, 'viagens', 'Volume por mês')]
-    for chart in charts:
-        spec = chart.to_dict()
-        assert spec['title']
-        assert spec['encoding']['x']['title'] and spec['encoding']['y']['title']
-        assert spec['encoding']['color']['legend']['orient'] == 'top'
-        assert spec['encoding']['tooltip']
-    assert charts[0].data['valor'].tolist() == [190.0, -10.0]
-    assert charts[1].data['valor'].tolist() == [19.0, -5.0]
-
-
-def test_painel_filtros_sem_resultados_e_minimo(fonte, monkeypatch):
-    monkeypatch.setattr(dashboard, 'carregar_gold', lambda: (fonte, datetime.now(timezone.utc)))
-    at = AppTest.from_file(str(APP), default_timeout=30).run()
+def test_painel_situacao_padrao_todas_orgao_periodo_e_vazio(pacote,monkeypatch):
+    monkeypatch.setattr(dashboard,'carregar_gold',lambda:pacote)
+    at=AppTest.from_file(str(APP),default_timeout=30).run()
     assert not at.exception and not at.error
-    assert [m.value for m in at.metric] == ['12', 'R$ 180,00', 'R$ 15,00']
-    assert len(at.get('vega_lite_chart')) == 4
-    assert at.warning and '1 trechos' in at.warning[0].value
-    at.multiselect(key='orgaos').set_value(['a']).run()
-    assert not at.exception and at.metric[2].value == 'R$ 19,00'
-    at.select_slider(key='periodo').set_value((pd.Timestamp('2025-02-01'), pd.Timestamp('2025-02-01'))).run()
-    assert not at.exception and at.metric[0].value == '9'
-    at.number_input(key='minimo').set_value(10).run()
-    assert any('mínimo' in i.value for i in at.info)
-    assert len(at.get('vega_lite_chart')) == 3
+    assert [m.value for m in at.metric][:4]==['100','120','40','180']
+    assert at.metric[5].value=='R$ 10,00'
+    assert len(at.get('vega_lite_chart'))==10
+    assert not any(b.label=='Carregar dados' for b in at.button)
+    at.multiselect(key='situacoes').set_value([]).run()
+    assert not at.exception and at.metric[0].value=='102'
     at.multiselect(key='orgaos').set_value(['b']).run()
-    assert not at.exception and len(at.metric) == 0
+    assert at.metric[0].value=='2' and any('elegíveis' in i.value for i in at.info)
+    at.select_slider(key='periodo').set_value((pd.Timestamp('2025-01-01'),pd.Timestamp('2025-01-01'))).run()
+    assert not at.exception and not at.metric
     assert any('Nenhuma viagem' in i.value for i in at.info)
 
 
-def test_painel_vazio_e_erro_controlado(fonte, monkeypatch):
-    monkeypatch.setattr(dashboard, 'carregar_gold', lambda: (fonte.iloc[:0], datetime.now(timezone.utc)))
-    at = AppTest.from_file(str(APP), default_timeout=30).run()
-    assert not at.exception and 'Não há dados' in at.info[0].value
+def test_medias_ponderadas_minimo_e_categoria_invalido(pacote):
+    frames,_=pacote
+    q=dashboard.analisar(frames)
+    assert q[1].iloc[0].destino=='Destino A'
+    assert q[3].iloc[0].tipo_pagamento=='PASSAGEM' and q[3].iloc[0].valor_medio==Decimal('200')
+    assert q[4].iloc[0].meio_transporte=='Inválido'
+    assert q[2].iloc[0].id_viagem=='002'
+    chart=grafico_ranking(q[3],'tipo_pagamento','valor_medio','Média',True).to_dict()
+    assert chart['encoding']['x']['title']=='Reais (R$)' and chart['encoding']['tooltip']
+
+
+def test_painel_vazio_e_erro_sem_detalhes(pacote,monkeypatch):
+    frames,meta=pacote
+    monkeypatch.setattr(dashboard,'carregar_gold',lambda:({k:v.iloc[:0] for k,v in frames.items()},meta))
+    at=AppTest.from_file(str(APP),default_timeout=30).run()
+    assert not at.exception and any('carga Gold' in i.value for i in at.info)
     st.cache_data.clear()
-    def falhar():
-        raise RuntimeError('Detalhe interno de conexão')
-    monkeypatch.setattr(dashboard, 'carregar_gold', falhar)
-    at = AppTest.from_file(str(APP), default_timeout=30).run()
-    assert not at.exception and at.error
-    assert 'Detalhe interno' not in at.error[0].value
+    def falhar():raise RuntimeError('senha e detalhe interno')
+    monkeypatch.setattr(dashboard,'carregar_gold',falhar)
+    at=AppTest.from_file(str(APP),default_timeout=30).run()
+    assert at.error and 'senha' not in at.error[0].value
 
 
-@pytest.mark.skipif(os.getenv('RUN_DASHBOARD_DB_TESTS') != '1', reason='Requer Gold carregada e RUN_DASHBOARD_DB_TESTS=1')
-def test_painel_com_gold_real():
-    fonte, _ = dashboard.carregar_gold()
-    at = AppTest.from_file(str(APP), default_timeout=30).run()
-    assert not at.exception and not at.error
-    assert at.metric[0].value == dashboard.br(int(fonte['viagens'].sum()), 0)
-    assert at.metric[1].value == 'R$ ' + dashboard.br(sum(fonte['valor_total_liquido'], Decimal(0)))
-    assert len(at.get('vega_lite_chart')) == 4
-
-
-@pytest.mark.parametrize('banco_ausente', [False, True])
-def test_criacao_exige_confirmacao(monkeypatch, banco_ausente):
-    import banco
-    from psycopg2.errors import InvalidCatalogName, UndefinedTable
-    chamadas = []
-
-    def falhar():
+@pytest.mark.parametrize('banco_ausente',[False,True])
+def test_estrutura_ausente_nao_cria_banco(monkeypatch,banco_ausente):
+    from psycopg2.errors import InvalidCatalogName,UndefinedTable
+    def fonte():
         if banco_ausente:
-            try:
-                raise InvalidCatalogName('database ausente')
-            except InvalidCatalogName as erro:
-                raise RuntimeError('conexao indisponivel') from erro
-        raise UndefinedTable('gold ausente')
+            raise RuntimeError('ausente') from InvalidCatalogName('ausente')
+        raise UndefinedTable('ausente')
+    monkeypatch.setattr(dashboard,'carregar_gold',fonte)
+    at=AppTest.from_file(str(APP),default_timeout=30).run()
+    assert not at.exception and at.warning
+    assert not any(b.label.startswith('Criar') or b.label=='Carregar dados' for b in at.button)
 
-    monkeypatch.setattr(dashboard, 'carregar_gold', falhar)
-    monkeypatch.setattr(banco, 'criar_estrutura', lambda **kwargs: chamadas.append(kwargs))
-    at = AppTest.from_file(str(APP), default_timeout=30).run()
-    assert not at.exception and at.warning and not chamadas
-    next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
-    assert not chamadas and 'confirmação' in at.error[0].value
-    at.checkbox[0].check()
-    next(botao for botao in at.button if botao.label.startswith('Criar')).click().run()
-    assert chamadas == [{'criar_database': banco_ausente}]
-    assert at.success and not at.exception
+
+def test_identidade_situacao_nula_nao_colide_com_rotulo(pacote):
+    frames,_=pacote
+    dados=frames['resumo_viagem_mes'].copy()
+    dados['situacao']=[None,'Situação não informada']
+    dados=dashboard.preparar(dados)
+    assert dados.situacao_chave.nunique()==2

@@ -52,7 +52,7 @@ def test_tipagem_relacoes_rejeicoes_reconciliacao_e_reexecucao(banco_isolado, mo
     resultado=silver.executar_silver(conn,2)
     assert (resultado['viagem']['aceitos'],resultado['viagem']['rejeitados'])==(1,1)
     assert (resultado['pagamento']['aceitos'],resultado['pagamento']['rejeitados'])==(2,3)
-    assert (resultado['trecho']['aceitos'],resultado['trecho']['rejeitados'])==(1,3)
+    assert (resultado['trecho']['aceitos'],resultado['trecho']['rejeitados'])==(2,2)
     assert resultado['pagamento']['numericos']['valor']['aceitos']==Decimal('24.68')
     assert resultado['pagamento']['numericos']['valor']['origem_convertivel']==Decimal('49.36')
     assert resultado['pagamento']['numericos']['valor']['invalidos']==1
