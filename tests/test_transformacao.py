@@ -84,12 +84,21 @@ def test_totais_e_identificador_nominal():
     assert dados['valor_total_liquido']==Decimal('24.68')
 
 
-def test_transporte_invalido_e_datas_invertidas_sao_identificados():
+def test_categoria_invalido_e_preservada():
+    r=registro('trecho')
+    r['Meio de transporte']='Inválido'
+    dados,erros=transformar('trecho',r)
+    assert erros == []
+    assert dados['meio_transporte']=='Inválido'
+
+
+def test_datas_invertidas_e_diarias_negativas_sao_identificadas():
     r=registro('trecho')
     r['Meio de transporte']='Inválido'
     r['Destino - Data']='31/12/2024'
     r['Número Diárias']='-0,50'
     _,erros=transformar('trecho',r)
-    assert 'meio_transporte:transporte_invalido' in erros
+    assert 'meio_transporte:transporte_invalido' not in erros
+    assert transformar('trecho', registro('trecho'))[0]['meio_transporte']=='Rodoviário'
     assert 'datas:ordem_invalida' in erros
     assert 'numero_diarias:negativo' in erros

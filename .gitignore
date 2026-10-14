@@ -2,6 +2,7 @@
 # Arquivos de configuração sensíveis
 # -------------------------------------------------------------------
 .env
+.streamlit/secrets.toml
 
 # -------------------------------------------------------------------
 # Dados brutos e intermediários

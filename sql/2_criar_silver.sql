@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS silver.silver_passagem (
     ocorrencia INTEGER NOT NULL CHECK (ocorrencia > 0),
     UNIQUE (registro_hash, ocorrencia),
     CHECK (id_passagem = registro_hash || ':' || ocorrencia::text),
-    CHECK (lower(btrim(meio_transporte)) <> 'inválido'),
     CHECK (origem_ida_uf IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')),
     CHECK (destino_ida_uf IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')),
     CHECK (origem_volta_uf IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')),
@@ -136,7 +135,6 @@ CREATE TABLE IF NOT EXISTS silver.silver_trecho (
     UNIQUE (id_viagem, sequencia),
     CHECK (destino_data >= origem_data),
     CHECK (numero_diarias >= 0),
-    CHECK (lower(btrim(meio_transporte)) <> 'inválido'),
     CHECK (origem_uf IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')),
     CHECK (destino_uf IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'))
 );

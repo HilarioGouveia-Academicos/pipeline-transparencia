@@ -1,4 +1,4 @@
-"""Fase 3: agrega a Silver por mês de início e órgão solicitante."""
+"""Fase 3: materializa e confere a Gold anterior e os conjuntos do dashboard."""
 import argparse
 from datetime import datetime, timezone
 import json

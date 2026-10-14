@@ -47,12 +47,12 @@ def test_joins_nao_multiplicam_e_preservam_viagens_sem_detalhes(banco_isolado):
     assert resultado['totais']['valor_total_liquido'] == Decimal('98.72')
     assert resultado['totais']['valor_pagamentos'] == Decimal('24.68')
     assert resultado['totais']['valor_passagens_detalhe'] == Decimal('37.02')
-    assert resultado['totais']['trechos'] == 3
-    assert resultado['totais']['trechos_rejeitados'] == 1
+    assert resultado['totais']['trechos'] == 4
+    assert resultado['totais']['trechos_rejeitados'] == 0
     assert resultado['maior_duracao_dias'] == 2
     with conn.cursor() as cur:
         cur.execute("SELECT viagens,pagamentos,passagens,trechos,valor_total_liquido FROM gold.resumo_orgao_mes WHERE mes_inicio='2025-01-01' AND codigo_orgao_solicitante='texto'")
-        assert cur.fetchone() == (1, 2, 3, 3, Decimal('24.68'))
+        assert cur.fetchone() == (1, 2, 3, 4, Decimal('24.68'))
         cur.execute('SELECT mes_inicio,pagamentos FROM gold.resumo_orgao_mes WHERE codigo_orgao_solicitante IS NULL')
         assert cur.fetchone() == (date(2025, 1, 1), 0)
     conn.commit()

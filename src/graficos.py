@@ -12,7 +12,7 @@ def grafico_orgaos(dados, campo, titulo):
     dados['indicador'] = 'Valor líquido' if campo == 'valor_total_liquido' else 'Média por viagem'
     chart = alt.Chart(dados[['rotulo', 'orgao', 'valor', 'valor_formatado', 'viagens', 'indicador']]).mark_bar().encode(
         x=alt.X('valor:Q', title='Reais (R$)', axis=alt.Axis(format='.3s', tickCount=5), scale=alt.Scale(zero=True)),
-        y=alt.Y('rotulo:N', title='Órgão solicitante', sort='-x', axis=alt.Axis(labelLimit=310, labelOverlap=False, titleAngle=0, titleAlign='right', titleX=-12, titleY=-12)),
+        y=alt.Y('rotulo:N', title='Órgão superior', sort='-x', axis=alt.Axis(labelLimit=310, labelOverlap=False, titleAngle=0, titleAlign='right', titleX=-12, titleY=-12)),
         color=alt.Color('indicador:N', title='Indicador', scale=alt.Scale(range=['#156b87']), legend=alt.Legend(orient='top')),
         tooltip=[alt.Tooltip('orgao:N', title='Órgão'), alt.Tooltip('valor_formatado:N', title='Valor'), alt.Tooltip('viagens:Q', title='Viagens', format=',')],
     ).properties(title=titulo, height=max(170, len(dados) * 34))
@@ -32,3 +32,16 @@ def grafico_meses(dados, campo, titulo):
         color=alt.Color('indicador:N', title='Indicador', scale=alt.Scale(range=['#156b87' if monetario else '#b05a23']), legend=alt.Legend(orient='top')),
         tooltip=[alt.Tooltip('mes:N', title='Mês'), alt.Tooltip('valor_formatado:N', title='Total')],
     ).properties(title=titulo, height=280)
+
+
+def grafico_ranking(dados, categoria, campo, titulo, monetario=False):
+    dados = dados.copy()
+    dados['categoria'] = dados[categoria].fillna('Não informado').map(str)
+    dados['rotulo'] = [f'{i}. {v}' for i,v in enumerate(dados['categoria'],1)]
+    dados['valor'] = dados[campo].map(float)
+    dados['formatado'] = dados[campo].map(lambda v: ('R$ ' if monetario else '') + br(v, 2 if monetario else 0))
+    return alt.Chart(dados[['categoria','rotulo','valor','formatado']]).mark_bar().encode(
+        x=alt.X('valor:Q', title='Reais (R$)' if monetario else ('Dias' if campo=='duracao_dias' else 'Quantidade'), scale=alt.Scale(zero=True)),
+        y=alt.Y('rotulo:N', title=categoria.replace('_',' ').capitalize(), sort=None, axis=alt.Axis(labelLimit=280)),
+        tooltip=[alt.Tooltip('categoria:N',title='Categoria'),alt.Tooltip('formatado:N',title='Resultado')],
+    ).properties(title=titulo,height=max(160,len(dados)*35))

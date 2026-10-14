@@ -10,13 +10,14 @@ from psycopg2 import sql as pg_sql
 from config import POSTGRES_CONFIG
 from pathlib import Path
 import logging
+import os
 
 # Configuração básica de logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def criar_estrutura(criar_database=False):
-    """Executa o mesmo SQL da instalação manual, somente após confirmação na UI."""
+    """Executa a estrutura SQL e define os conjuntos Gold do dashboard."""
     script = (Path(__file__).resolve().parents[1] / 'sql/0_criar_banco.sql').read_text(encoding='utf-8-sig')
     if criar_database:
         configuracao = {**POSTGRES_CONFIG, 'dbname': 'postgres'}
@@ -34,23 +35,31 @@ def criar_estrutura(criar_database=False):
         with conexao:
             with conexao.cursor() as cursor:
                 cursor.execute(script)
+            from gold_dashboard import criar_conjuntos
+            criar_conjuntos(conexao)
     finally:
         conexao.close()
 
-def conectar():
+def conectar(leitura=False):
     """
     Abre uma conexão com o PostgreSQL (no database configurado no .env).
     Retorna a conexão ativa ou lança RuntimeError em caso de falha.
     """
     try:
-        conexao = psycopg2.connect(**POSTGRES_CONFIG)
-        logging.info(f"Conectado ao PostgreSQL em {POSTGRES_CONFIG['host']}:{POSTGRES_CONFIG['port']}/{POSTGRES_CONFIG['dbname']}")
+        configuracao = dict(POSTGRES_CONFIG)
+        if leitura:
+            for campo, variavel in [('host','HOST'),('port','PORT'),('user','USER'),('password','PASSWORD'),('dbname','DATABASE')]:
+                valor = os.getenv('DASHBOARD_POSTGRES_'+variavel)
+                if valor is not None:
+                    configuracao[campo] = int(valor) if campo=='port' else valor
+        conexao = psycopg2.connect(**configuracao)
+        logging.info(f"Conectado ao PostgreSQL em {configuracao['host']}:{configuracao['port']}/{configuracao['dbname']}")
         return conexao
     except Error as erro:
         raise RuntimeError(
             f"Não foi possível conectar ao PostgreSQL em "
-            f"{POSTGRES_CONFIG['host']}:{POSTGRES_CONFIG['port']} / database "
-            f"'{POSTGRES_CONFIG['dbname']}'. Verifique o .env e se você já rodou "
+            f"{configuracao['host']}:{configuracao['port']} / database "
+            f"'{configuracao['dbname']}'. Verifique a configuração da conexão e se você já rodou "
             f"o script '0_criar_banco.sql'. Detalhe: {erro}"
         )
 

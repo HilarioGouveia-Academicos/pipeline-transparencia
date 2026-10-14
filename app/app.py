@@ -1,171 +1,146 @@
+"""Dashboard com leitura exclusiva de tabelas Gold."""
 from pathlib import Path
 import logging
 import sys
 from decimal import Decimal
 from zoneinfo import ZoneInfo
-
 import pandas as pd
 import streamlit as st
+from psycopg2 import OperationalError
 from psycopg2.errors import InvalidCatalogName, UndefinedTable, InvalidSchemaName
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import dashboard as dados_painel
-from dashboard import agregar, br, filtrar, preparar, tabela_exibicao
-from graficos import grafico_meses, grafico_orgaos
-from banco import criar_estrutura
+from dashboard import agregar, analisar, br, filtrar, tabela_exibicao
+from graficos import grafico_meses, grafico_orgaos, grafico_ranking
 from config import POSTGRES_CONFIG
-from psycopg2 import OperationalError
-from carga import carregar_pipeline
-import os
 
 st.set_page_config(page_title='Viagens a serviço | Transparência', page_icon=':material/travel_explore:', layout='wide')
 st.title('Viagens a serviço')
-st.caption('Portal da Transparência · Valores e volume por órgão solicitante e mês de início')
+st.caption('Portal da Transparência · Indicadores e sete perguntas de negócio')
 
-
-@st.cache_data(ttl=300, max_entries=1, show_spinner='Consultando os dados de viagens…')
+@st.cache_data(ttl=300, max_entries=1, show_spinner='Consultando a Gold…')
 def carregar():
     return dados_painel.carregar_gold()
 
-
 with st.sidebar:
-    st.header('Consultar viagens')
+    st.header('Dados do painel')
     if st.button('Atualizar dados', icon=':material/refresh:', key='atualizar'):
         carregar.clear()
-    with st.expander('Carregar dados do projeto'):
-        st.write('Executa Raw, Silver e Gold no banco configurado. Uma nova carga substitui os dados dessas camadas. A operação pode levar vários minutos.')
-        with st.form('confirmar_carga'):
-            drive_id = st.text_input('ID do arquivo ZIP no Google Drive',
-                                     value=os.getenv('DRIVE_FILE_ID', '1R6re1574aCeqNfwJXQ_T7BwHCEsPfgvc'))
-            autorizar_carga = st.checkbox('Confirmo a carga e a substituição dos dados', key='autorizar_carga')
-            iniciar_carga = st.form_submit_button('Carregar dados')
-        if iniciar_carga:
-            if not autorizar_carga:
-                st.error('Marque a confirmação antes de carregar.')
-            else:
-                barra = st.progress(0, text='Preparando a carga…')
-                try:
-                    carregar_pipeline(drive_id.strip(), lambda valor, texto: barra.progress(valor, text=texto))
-                except Exception as erro_carga:
-                    logging.exception('Falha na carga solicitada pelo painel')
-                    st.error(str(erro_carga) if isinstance(erro_carga, (ValueError, RuntimeError)) else 'A carga falhou. Verifique a conexão e os logs das etapas.')
-                    for etapa in ('raw', 'silver', 'gold'):
-                        arquivo_log = Path(__file__).resolve().parents[1] / 'data' / f'carga_{etapa}.log'
-                        if arquivo_log.exists():
-                            st.download_button(f'Baixar log {etapa}', arquivo_log.read_bytes(), file_name=arquivo_log.name, key=f'log_{etapa}')
-                    st.stop()
-                carregar.clear()
-                st.session_state['carga_concluida'] = True
-                st.rerun()
-
-if st.session_state.pop('carga_concluida', False):
-    st.success('Dados carregados. O painel já está atualizado.')
-
 try:
-    fonte, consultado_em = carregar()
+    conjuntos, metadados = carregar()
 except Exception as erro:
-    logging.exception('Não foi possível carregar o painel')
     causa = erro.__cause__ or erro.__context__ or erro
-    banco_ausente = isinstance(causa, InvalidCatalogName) or (
-        isinstance(causa, OperationalError)
-        and f'database "{POSTGRES_CONFIG["dbname"]}" does not exist' in str(causa)
-    )
-    if banco_ausente or isinstance(erro, (UndefinedTable, InvalidSchemaName)):
-        st.warning('O banco configurado não existe.' if banco_ausente else 'As tabelas necessárias ao painel ainda não existem.')
-        st.write('Você pode criar o banco e as tabelas necessários para este projeto. Os dados deverão ser carregados depois.' if banco_ausente else 'Você pode criar as tabelas deste projeto no banco conectado. Os dados deverão ser carregados depois.')
-        with st.form('confirmar_criacao'):
-            confirmado = st.checkbox('Confirmo a criação no banco configurado', key='autorizar_criacao')
-            criar = st.form_submit_button('Criar banco e tabelas' if banco_ausente else 'Criar tabelas')
-        if criar:
-            if not confirmado:
-                st.error('Marque a confirmação antes de criar.')
-            else:
-                try:
-                    with st.spinner('Criando a estrutura do projeto…'):
-                        criar_estrutura(criar_database=banco_ausente)
-                    carregar.clear()
-                    st.success('Estrutura criada. Clique em Atualizar dados para consultar novamente.')
-                except Exception:
-                    logging.exception('Não foi possível criar a estrutura')
-                    st.error('Não foi possível criar a estrutura. Confira as permissões de criação do usuário do banco e os logs do app.')
-        st.stop()
-    st.error('Não foi possível consultar os dados. Verifique a conexão com o banco e a conclusão da etapa Gold.')
-    st.stop()
-
-if fonte.empty:
-    st.info('Não há dados na Gold. Execute a etapa de análise antes de consultar o painel.')
-    st.stop()
-
-dados = preparar(fonte)
-meses = sorted(dados['mes_inicio'].unique())
-with st.sidebar:
-    if len(meses) > 1:
-        inicio, fim = st.select_slider('Meses de início', options=meses, value=(meses[0], meses[-1]),
-                                       format_func=lambda d: pd.Timestamp(d).strftime('%m/%Y'), key='periodo')
+    banco_ausente = isinstance(causa,InvalidCatalogName) or (
+        isinstance(causa,OperationalError) and f'database "{POSTGRES_CONFIG["dbname"]}" does not exist' in str(causa))
+    if banco_ausente or isinstance(erro,(UndefinedTable,InvalidSchemaName)):
+        st.warning('A estrutura Gold do painel ainda não está disponível.')
+        st.info('Execute a carga pelo terminal e depois atualize os dados do painel.')
     else:
-        inicio = fim = meses[0]
-        st.caption('Mês disponível: ' + pd.Timestamp(inicio).strftime('%m/%Y'))
-    opcoes = dados[['orgao_chave', 'orgao']].drop_duplicates().sort_values('orgao')
-    nomes = dict(zip(opcoes['orgao_chave'], opcoes['orgao']))
-    orgaos = st.multiselect('Órgãos solicitantes', options=list(nomes), format_func=nomes.get, key='orgaos')
-    st.caption('Sem seleção de órgãos: inclui todos. Os filtros afetam todos os resultados abaixo.')
-    st.caption('Dados consultados em ' + consultado_em.astimezone(ZoneInfo('America/Sao_Paulo')).strftime('%d/%m/%Y às %H:%M') + '. Cache de até 5 minutos.')
-
-recorte = filtrar(dados, inicio, fim, orgaos)
-if recorte.empty:
-    st.info('Nenhuma viagem encontrada para os filtros selecionados. Amplie o período ou a seleção de órgãos.')
+        logging.exception('Não foi possível consultar a Gold')
+        st.error('Não foi possível consultar os dados. Verifique a conexão e as permissões de leitura da Gold.')
     st.stop()
 
-viagens = int(recorte['viagens'].sum())
-valor = sum(recorte['valor_total_liquido'], Decimal(0))
-media = valor / Decimal(viagens)
-rejeitados = int(recorte['trechos_rejeitados'].sum())
-trechos = int(recorte['trechos'].sum())
+fonte = conjuntos['resumo_viagem_mes']
+if fonte.empty or metadados['carregado_em'] is None:
+    st.info('Não há uma carga Gold validada. O responsável deve executar a carga antes de consultar o painel.')
+    st.stop()
+meses = sorted(fonte['mes_inicio'].unique())
+opcoes = fonte[['orgao_chave','orgao']].drop_duplicates().sort_values('orgao')
+nomes = dict(zip(opcoes['orgao_chave'],opcoes['orgao']))
+situacoes = dict(zip(fonte['situacao_chave'],fonte['situacao'].fillna('Situação não informada')))
+padrao = [chave for chave,nome in situacoes.items() if nome=='Realizada']
+with st.sidebar:
+    st.header('Filtros')
+    if len(meses)>1:
+        inicio,fim = st.select_slider('Período de início da viagem',options=meses,value=(meses[0],meses[-1]),format_func=lambda d: pd.Timestamp(d).strftime('%m/%Y'),key='periodo')
+    else:
+        inicio=fim=meses[0]
+        st.caption('Período: '+pd.Timestamp(inicio).strftime('%m/%Y'))
+    orgaos = st.multiselect('Órgãos superiores',options=list(nomes),format_func=nomes.get,key='orgaos')
+    selecionadas = st.multiselect('Situação da viagem',options=sorted(situacoes),default=padrao,format_func=situacoes.get,key='situacoes')
+    st.caption('Sem seleção de órgãos ou situações: inclui todos. Os filtros afetam todos os indicadores e análises.')
+escopo = ', '.join(situacoes[s] for s in selecionadas) if selecionadas else 'Todas as situações'
+rotulo_orgaos = 'Todos os órgãos' if not orgaos else ', '.join(nomes[o] for o in orgaos)
+st.caption(f'{pd.Timestamp(inicio):%m/%Y} a {pd.Timestamp(fim):%m/%Y} · {rotulo_orgaos} · {escopo}')
+carregado = metadados['carregado_em'].astimezone(ZoneInfo('America/Sao_Paulo'))
+st.caption(f'Gold carregada em {carregado:%d/%m/%Y às %H:%M}. Cache de leitura de até 5 minutos.')
+recortes = {nome: filtrar(dados,inicio,fim,orgaos,selecionadas) for nome,dados in conjuntos.items()}
+geral = recortes['resumo_viagem_mes']
+if geral.empty:
+    st.info('Nenhuma viagem encontrada para os filtros selecionados.')
+    st.stop()
+st.subheader('Volume do recorte')
 with st.container(horizontal=True):
-    st.metric('Viagens', br(viagens, 0), border=True)
-    st.metric('Valor líquido', 'R$ ' + br(valor), border=True)
-    st.metric('Média por viagem', 'R$ ' + br(media), border=True)
+    for coluna,rotulo in [('viagens','Viagens'),('pagamentos','Pagamentos'),('passagens','Passagens'),('trechos','Trechos')]:
+        st.metric(rotulo,br(int(geral[coluna].sum()),0),border=True)
+valor = sum(geral['valor_total_liquido'],Decimal(0))
+viagens = int(geral['viagens'].sum())
+with st.container(horizontal=True):
+    st.metric('Valor líquido','R$ '+br(valor),border=True)
+    st.metric('Média por viagem','R$ '+br(valor/Decimal(viagens)),border=True)
+    st.metric('Total pago','R$ '+br(sum(geral['valor_pagamentos'],Decimal(0))),border=True)
+st.caption('Valor líquido = diárias + passagens + outros gastos − devoluções. Total pago é uma medida distinta. Trechos incluem a categoria Inválido.')
 
-st.caption('Valor líquido = diárias + passagens + outros gastos − devoluções, conforme os valores da viagem. Todos os valores estão em reais nominais.')
-if rejeitados:
-    percentual = Decimal(rejeitados) * 100 / Decimal(trechos + rejeitados)
-    st.warning(f'{br(rejeitados, 0)} trechos auditados como rejeitados ({br(percentual)}% dos trechos vinculados às viagens deste recorte). As viagens continuam incluídas nos indicadores financeiros.')
+def mostrar(tabela,categoria,campo,titulo,monetario=False):
+    if tabela.empty:
+        st.info('Não há dados elegíveis para esta análise no recorte.')
+        return
+    st.altair_chart(grafico_ranking(tabela,categoria,campo,titulo,monetario),width='stretch',theme=None)
+    st.dataframe(tabela_exibicao(tabela),hide_index=True)
 
-por_orgao = agregar(recorte, ['orgao_chave', 'orgao']).sort_values(['valor_total_liquido', 'orgao_chave'], ascending=[False, True])
-por_mes = agregar(recorte, ['mes_inicio']).sort_values('mes_inicio')
+visao,perguntas = st.tabs(['Visão geral','Sete perguntas de negócio'])
+with visao:
+    por_mes = agregar(geral,['mes_inicio']).sort_values('mes_inicio')
+    st.subheader('Evolução por mês de início')
+    st.altair_chart(grafico_meses(por_mes,'valor_total_liquido','Valor líquido por mês'),width='stretch',theme=None)
+    st.altair_chart(grafico_meses(por_mes,'viagens','Viagens por mês'),width='stretch',theme=None)
+    st.caption('Os valores são atribuídos ao início da viagem; não representam fluxo de caixa mensal.')
+    st.dataframe(tabela_exibicao(por_mes),hide_index=True)
+    st.subheader('Órgãos superiores com maior média por viagem')
+    minimo = st.number_input('Mínimo de viagens para este ranking',min_value=1,value=1,step=1,key='minimo')
+    medias = agregar(geral,['orgao_chave','orgao'])
+    medias = medias[medias['viagens']>=minimo].sort_values(['media_por_viagem','orgao_chave'],ascending=[False,True]).head(10)
+    if medias.empty:
+        st.info('Nenhum órgão atinge o mínimo de viagens informado.')
+    else:
+        st.altair_chart(grafico_orgaos(medias,'media_por_viagem','Até dez órgãos com maior média'),width='stretch',theme=None)
+        st.dataframe(tabela_exibicao(medias[['orgao','viagens','valor_total_liquido','media_por_viagem']]),hide_index=True)
 
-st.header('1. Quais órgãos concentram o maior valor líquido?')
-lider = por_orgao.iloc[0]
-participacao = f' ({br(lider.valor_total_liquido * 100 / valor)}% do total selecionado)' if valor > 0 else ''
-st.markdown(f'**{lider.orgao}** lidera o recorte com **R$ {br(lider.valor_total_liquido)}**{participacao}, em **{br(int(lider.viagens), 0)} viagens**.')
-st.altair_chart(grafico_orgaos(por_orgao, 'valor_total_liquido', 'Até 10 órgãos com maior valor líquido'), width='stretch', height=460, theme=None)
-st.caption('A ordem considera o valor líquido. Nomes abreviados no eixo podem ser consultados por inteiro ao passar o cursor ou na tabela de resultados.')
+with perguntas:
+    resultados = analisar(recortes)
+    configuracoes = [
+        ('Quais são os cinco órgãos com maior custo total?','orgao','valor_total_liquido',True),
+        ('Quais são os três destinos com maior custo médio?','destino','custo_medio',True),
+        ('Qual é a viagem de maior duração e seu custo?','id_viagem','duracao_dias',False),
+        ('Qual tipo de pagamento tem maior valor médio?','tipo_pagamento','valor_medio',True),
+        ('Qual meio de transporte é mais usado?','meio_transporte','trechos',False),
+        ('Qual UF de destino é mais frequente?','destino_uf','trechos',False),
+        ('Qual órgão pagou mais no total?','nome_orgao_pagador','total_pago',True),
+    ]
+    for i,(q,(pergunta,categoria,campo,monetario)) in enumerate(zip(resultados,configuracoes),1):
+        st.subheader(f'{i}. {pergunta}')
+        if i==2:
+            st.caption('Destino é o texto completo da fonte. Mínimo de 100 viagens por destino no recorte.')
+        if i==3:
+            st.caption('A duração inclui os dias de início e fim.')
+            exibicao = q[['id_viagem','orgao','data_inicio','data_fim','duracao_dias','valor_total_liquido']]
+        elif i==1:
+            exibicao = q[['orgao','viagens','valor_total_liquido']]
+        else:
+            exibicao = q
+        mostrar(exibicao,categoria,campo,pergunta,monetario)
+        if not q.empty:
+            lider=q.iloc[0]
+            nome = str(lider[categoria]) if pd.notna(lider[categoria]) else 'Não informado'
+            if i==3:
+                st.write(f'A viagem {nome} dura {int(lider.duracao_dias)} dias e custa R$ {br(lider.valor_total_liquido)}.')
+            elif i==5:
+                st.write(f'{nome} lidera com {br(int(lider.trechos),0)} trechos ({br(lider.participacao)}% do total).')
+            else:
+                st.write(f'{nome} lidera: '+('R$ '+br(lider[campo]) if monetario else br(int(lider[campo]),0)+' trechos')+'.')
+        if i==7:
+            st.caption('Órgão pagador pode diferir do órgão superior selecionado no filtro.')
 
-st.header('2. Como variam o volume e o valor por mês de início?')
-mes_valor = por_mes.loc[por_mes['valor_total_liquido'].idxmax()]
-mes_volume = por_mes.loc[por_mes['viagens'].idxmax()]
-st.markdown(f'**{mes_valor.mes_inicio:%m/%Y}** apresenta o maior valor líquido (**R$ {br(mes_valor.valor_total_liquido)}**). O maior volume ocorre em **{mes_volume.mes_inicio:%m/%Y}**, com **{br(int(mes_volume.viagens), 0)} viagens**. Em caso de empate, é exibido o primeiro mês.')
-st.altair_chart(grafico_meses(por_mes, 'valor_total_liquido', 'Valor líquido por mês de início'), width='stretch', height=360, theme=None)
-st.altair_chart(grafico_meses(por_mes, 'viagens', 'Viagens por mês de início'), width='stretch', height=360, theme=None)
-st.caption('Os valores são atribuídos ao início da viagem. Esta série não representa pagamentos efetuados em cada mês. Meses sem viagens para a seleção não são exibidos.')
-st.dataframe(tabela_exibicao(por_mes), hide_index=True)
-
-st.header('3. Quais órgãos têm maior média por viagem?')
-minimo = st.number_input('Mínimo de viagens para este ranking', min_value=1, value=1, step=1, key='minimo', help='Afeta apenas a pergunta 3. Ajuda a comparar órgãos com volumes suficientes para a análise.')
-ranking = por_orgao[por_orgao['viagens'] >= minimo].sort_values(['media_por_viagem', 'orgao_chave'], ascending=[False, True])
-if ranking.empty:
-    st.info('Nenhum órgão atinge o mínimo de viagens informado.')
-else:
-    maior = ranking.iloc[0]
-    st.markdown(f'**{maior.orgao}** tem a maior média elegível: **R$ {br(maior.media_por_viagem)} por viagem**, considerando **{br(int(maior.viagens), 0)} viagens**.')
-    st.altair_chart(grafico_orgaos(ranking, 'media_por_viagem', 'Até 10 órgãos com maior média líquida por viagem'), width='stretch', height=460, theme=None)
-    st.dataframe(tabela_exibicao(ranking[['orgao', 'viagens', 'valor_total_liquido', 'media_por_viagem']].head(10)), hide_index=True)
-st.caption('Média = soma do valor líquido ÷ quantidade de viagens. Uma média maior não demonstra desperdício: duração, finalidade e destinos precisam ser considerados.')
-
-with st.expander('Resultados completos e critérios de leitura'):
-    st.dataframe(tabela_exibicao(por_orgao[['orgao', 'viagens', 'valor_total_liquido', 'media_por_viagem']]), hide_index=True)
-    st.markdown('''- Inclui todas as situações de viagem aceitas na Silver, sem filtros adicionais de data ou situação além da seleção acima.
-- Órgãos sem nome ou código são mantidos e identificados na tabela.
-- Despesas da viagem, pagamentos e bilhetes têm definições próprias; seus valores não são somados entre si.
-- O recorte original contém viagens iniciadas de janeiro a junho de 2025; elas podem terminar depois desse período.
-- A comparação não controla diferenças de duração, finalidade ou destino e não estabelece causalidade.''')
+with st.expander('Exportar resultados do recorte'):
+    for i,tabela in enumerate(resultados,1):
+        st.download_button(f'Exportar pergunta {i}',tabela.to_csv(index=False).encode('utf-8-sig'),file_name=f'pergunta_{i}.csv',mime='text/csv',key=f'exportar_{i}')
